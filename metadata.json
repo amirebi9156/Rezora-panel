@@ -1,0 +1,5 @@
+{
+  "name": "Marzban Bot Admin Panel",
+  "description": "A web-based admin panel to manage a Telegram bot that sells Marzban VPN configurations. This dashboard allows administrators to manage VPN panels, subscription plans, view sales analytics, and configure bot settings.",
+  "requestFramePermissions": []
+}
