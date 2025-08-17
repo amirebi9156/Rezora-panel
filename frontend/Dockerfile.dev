@@ -1,0 +1,31 @@
+# Development Dockerfile for VPN Bot Frontend
+FROM node:18-alpine
+
+# Install necessary packages for development
+RUN apk add --no-cache \
+    curl \
+    git \
+    vim \
+    && rm -rf /var/cache/apk/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev dependencies)
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3001 || exit 1
+
+# Start development server
+CMD ["npm", "start"]
