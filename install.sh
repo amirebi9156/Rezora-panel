@@ -274,13 +274,13 @@ download_application() {
         # Download from GitHub release or clone repository
         if command -v git &> /dev/null; then
             log "Cloning from git repository..."
-            git clone https://github.com/yourusername/vpn-bot.git .
+            git clone https://github.com/amirebi9156/Rezora-panel.git .
         else
             log "Git not available, downloading zip file..."
-            wget -O vpn-bot.zip "https://github.com/yourusername/vpn-bot/archive/main.zip"
+            wget -O vpn-bot.zip "https://github.com/amirebi9156/Rezora-panel/archive/refs/heads/main.zip"
             unzip vpn-bot.zip
-            mv vpn-bot-main/* .
-            rm -rf vpn-bot-main vpn-bot.zip
+            mv Rezora-panel-main/* .
+            rm -rf Rezora-panel-main vpn-bot.zip
         fi
     fi
     
@@ -337,6 +337,7 @@ setup_environment() {
 NODE_ENV=production
 PORT=3000
 FRONTEND_URL=https://yourdomain.com
+APP_URL=https://yourdomain.com
 
 # Database
 DB_HOST=localhost
@@ -353,9 +354,20 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 TELEGRAM_WEBHOOK_SECRET=$(openssl rand -base64 32)
 ADMIN_TELEGRAM_IDS=123456789,987654321
 
+# Support / Branding
+SUPPORT_TELEGRAM=@RezoraHub
+SUPPORT_EMAIL=support@yourdomain.com
+
 # Payment Gateways
 ZARINPAL_MERCHANT_ID=your_zarinpal_merchant_id
 ZARINPAL_CALLBACK_URL=https://yourdomain.com/api/payments/zarinpal/callback
+
+# Card to Card (Manual)
+BANK_CARD_NUMBER=6037000000000000
+BANK_CARD_HOLDER=Your Name
+
+# Crypto (Manual)
+CRYPTO_USDT_TRC20_ADDRESS=TVxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # Security
 SESSION_SECRET=$(openssl rand -base64 64)
@@ -812,6 +824,7 @@ show_completion() {
     echo -e "${BLUE}Access URLs:${NC}"
     echo "  Frontend: https://yourdomain.com"
     echo "  Backend API: https://yourdomain.com/api"
+    echo "  Telegram Webhook: https://yourdomain.com/webhook/telegram"
     echo "  Health Check: https://yourdomain.com/health"
     echo
     echo -e "${YELLOW}Important:${NC}"

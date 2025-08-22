@@ -7,6 +7,7 @@ import { PaymentService } from '../services/paymentService.js';
 import { UserService } from '../services/userService.js';
 import { PlanService } from '../services/planService.js';
 import { generateConfig } from '../utils/configGenerator.js';
+import type { Express } from 'express';
 import { validateTelegramWebhook } from '../middleware/telegramAuth.js';
 
 export interface BotSession {
@@ -69,22 +70,29 @@ class TelegramBot {
   private setupCommands() {
     // Start command
     this.bot.start(async (ctx) => {
-      const welcomeMessage = `
-🎉 به ربات فروش VPN خوش آمدید!
+      const welcomeMessage =
+        '<b>🎉 به ربات فروش VPN خوش آمدید!</b>\n\n' +
+        '🔐 این ربات به شما امکان خرید VPN با کیفیت بالا را می‌دهد.\n\n' +
+        '<b>منوی اصلی:</b>\n' +
+        '• مشاهده پلن‌ها\n' +
+        '• خرید VPN\n' +
+        '• VPN های من\n' +
+        '• پشتیبانی';
 
-🔐 این ربات به شما امکان خرید VPN با کیفیت بالا را می‌دهد.
+      // Persistent reply keyboard (Main menu)
+      const mainMenu = {
+        reply_markup: {
+          keyboard: [
+            [{ text: '📋 مشاهده پلن‌ها' }, { text: '🛒 خرید VPN' }],
+            [{ text: '🔐 VPN های من' }, { text: '🆘 پشتیبانی' }]
+          ],
+          resize_keyboard: true,
+          one_time_keyboard: false
+        },
+        parse_mode: 'HTML' as const
+      };
 
-📋 دستورات موجود:
-/plans - مشاهده پلن‌های موجود
-/buy - خرید VPN
-/my_vpn - VPN های فعال شما
-/support - پشتیبانی
-/help - راهنما
-
-💡 برای شروع، روی /plans کلیک کنید.
-      `;
-      
-      await ctx.reply(welcomeMessage);
+      await ctx.reply(welcomeMessage, mainMenu);
       
       // Initialize user in database
       if (ctx.from) {
@@ -94,30 +102,21 @@ class TelegramBot {
 
     // Help command
     this.bot.help(async (ctx) => {
-      const helpMessage = `
-📚 راهنمای استفاده از ربات:
+      const helpMessage =
+        '<b>📚 راهنمای استفاده از ربات</b>\n\n' +
+        '🛒 خرید VPN:\n' +
+        '1️⃣ مشاهده پلن‌ها\n' +
+        '2️⃣ انتخاب و خرید\n' +
+        '3️⃣ پرداخت\n' +
+        '4️⃣ دریافت کانفیگ\n\n' +
+        '📱 مدیریت VPN:\n' +
+        '• VPN های فعال\n' +
+        '• تمدید اشتراک\n\n' +
+        '🔧 ادمین:\n' +
+        '• مدیریت پنل‌ها، پلن‌ها، کاربران و آمار\n\n' +
+        '📞 پشتیبانی';
 
-🛒 خرید VPN:
-1️⃣ /plans - مشاهده پلن‌ها
-2️⃣ /buy - انتخاب و خرید
-3️⃣ پرداخت
-4️⃣ دریافت کانفیگ
-
-📱 مدیریت VPN:
-/my_vpn - مشاهده VPN های فعال
-/renew - تمدید اشتراک
-
-🔧 ادمین:
-/admin_panels - مدیریت پنل‌ها
-/admin_plans - مدیریت پلن‌ها
-/admin_stats - آمار فروش
-/admin_users - مدیریت کاربران
-
-📞 پشتیبانی:
-/support - تماس با پشتیبانی
-      `;
-      
-      await ctx.reply(helpMessage);
+      await ctx.reply(helpMessage, { parse_mode: 'HTML' });
     });
 
     // Plans command
@@ -129,22 +128,17 @@ class TelegramBot {
           return ctx.reply('❌ در حال حاضر هیچ پلنی موجود نیست.');
         }
 
-        let plansMessage = '📋 پلن‌های موجود:\n\n';
-        
-        for (const plan of plans) {
-          const panel = await this.marzbanService.getPanelById(plan.panelId);
-          plansMessage += `
-🔸 ${plan.name}
-📊 حجم: ${plan.dataLimit} GB
-⏰ مدت: ${plan.duration} روز
-💰 قیمت: ${plan.price.toLocaleString()} تومان
-🌐 سرور: ${panel?.name || 'نامشخص'}
-          `;
-        }
-        
-        plansMessage += '\n💡 برای خرید روی /buy کلیک کنید.';
-        
-        await ctx.reply(plansMessage);
+        const keyboard = {
+          inline_keyboard: plans.map(plan => ([
+            { text: `🛒 ${plan.name}`, callback_data: `select_plan:${plan.id}` },
+            { text: `💰 ${plan.price.toLocaleString()} تومان`, callback_data: `noop` }
+          ]))
+        };
+
+        await ctx.reply('<b>📋 پلن‌های موجود</b>\n\nیکی از پلن‌ها را انتخاب کنید:', {
+          reply_markup: keyboard,
+          parse_mode: 'HTML'
+        } as any);
       } catch (error) {
         logger.error('Error fetching plans:', error);
         await ctx.reply('❌ خطا در دریافت پلن‌ها. لطفاً دوباره تلاش کنید.');
@@ -162,15 +156,16 @@ class TelegramBot {
 
         // Create inline keyboard for plan selection
         const keyboard = {
-          inline_keyboard: plans.map(plan => ([{
-            text: `${plan.name} - ${plan.price.toLocaleString()} تومان`,
-            callback_data: `select_plan:${plan.id}`
-          }]))
+          inline_keyboard: plans.map(plan => ([
+            { text: `🛒 ${plan.name}`, callback_data: `select_plan:${plan.id}` },
+            { text: `💰 ${plan.price.toLocaleString()} تومان`, callback_data: 'noop' }
+          ]))
         };
 
-        await ctx.reply('🎯 لطفاً پلن مورد نظر خود را انتخاب کنید:', {
-          reply_markup: keyboard
-        });
+        await ctx.reply('<b>🎯 لطفاً پلن مورد نظر خود را انتخاب کنید:</b>', {
+          reply_markup: keyboard,
+          parse_mode: 'HTML'
+        } as any);
       } catch (error) {
         logger.error('Error in buy command:', error);
         await ctx.reply('❌ خطا در نمایش پلن‌ها. لطفاً دوباره تلاش کنید.');
@@ -216,17 +211,15 @@ class TelegramBot {
 
     // Support command
     this.bot.command('support', async (ctx) => {
-      const supportMessage = `
-📞 پشتیبانی:
+      const supportTelegram = process.env.SUPPORT_TELEGRAM || '@RezoraHub';
+      const supportEmail = process.env.SUPPORT_EMAIL || 'support@yourdomain.com';
+      const supportMessage =
+        '<b>📞 پشتیبانی</b>\n\n' +
+        `🔗 کانال تلگرام: ${supportTelegram}\n` +
+        `📧 ایمیل: ${supportEmail}\n\n` +
+        '⏰ ساعات کاری: 9 صبح تا 9 شب';
 
-🔗 کانال تلگرام: @support_channel
-📧 ایمیل: support@example.com
-📱 شماره تماس: 09123456789
-
-⏰ ساعات کاری: 9 صبح تا 9 شب
-      `;
-      
-      await ctx.reply(supportMessage);
+      await ctx.reply(supportMessage, { parse_mode: 'HTML' });
     });
 
     // Admin commands
@@ -245,6 +238,15 @@ class TelegramBot {
     this.bot.command('admin_users', async (ctx) => {
       await this.handleAdminUsers(ctx);
     });
+
+    // Add panel (admin only)
+    this.bot.command('add_panel', async (ctx) => {
+      const isAdmin = await this.checkAdminStatus(ctx.from?.id);
+      if (!isAdmin) return ctx.reply('❌ شما دسترسی ادمین ندارید!');
+
+      ctx.session = { state: 'waiting_for_panel_url' };
+      await ctx.reply('🌐 لطفاً آدرس پنل Marzban را ارسال کنید (مثال: https://panel.example.com)');
+    });
   }
 
   private setupHandlers() {
@@ -253,12 +255,18 @@ class TelegramBot {
       try {
         const data = ctx.callbackQuery.data;
         
-        if (data?.startsWith('select_plan:')) {
+        if (data === 'noop') {
+          // do nothing; used for visual grouping
+          return;
+        } else if (data?.startsWith('select_plan:')) {
           const planId = data.split(':')[1];
           await this.handlePlanSelection(ctx, planId);
         } else if (data?.startsWith('payment_method:')) {
           const method = data.split(':')[1];
           await this.handlePaymentMethodSelection(ctx, method);
+        } else if (data === 'back:plans') {
+          await ctx.deleteMessage().catch(() => {});
+          await (this.bot as any).commands.get('buy')?.(ctx);
         } else if (data?.startsWith('confirm_payment:')) {
           const paymentId = data.split(':')[1];
           await this.handlePaymentConfirmation(ctx, paymentId);
@@ -275,6 +283,19 @@ class TelegramBot {
     this.bot.on(message('text'), async (ctx) => {
       try {
         const text = ctx.message.text;
+        // Map main menu buttons to commands
+        if (text === '📋 مشاهده پلن‌ها') {
+          return (this.bot as any).commands.get('plans')?.(ctx);
+        }
+        if (text === '🛒 خرید VPN') {
+          return (this.bot as any).commands.get('buy')?.(ctx);
+        }
+        if (text === '🔐 VPN های من') {
+          return (this.bot as any).commands.get('my_vpn')?.(ctx);
+        }
+        if (text === '🆘 پشتیبانی') {
+          return (this.bot as any).commands.get('support')?.(ctx);
+        }
         
         if (ctx.session?.state === 'waiting_for_panel_url') {
           await this.handlePanelUrlInput(ctx, text);
@@ -303,15 +324,20 @@ class TelegramBot {
 
       const keyboard = {
         inline_keyboard: [
-          [{ text: '💳 کارت به کارت', callback_data: 'payment_method:card' }],
-          [{ text: '💰 ارز دیجیتال', callback_data: 'payment_method:crypto' }],
-          [{ text: '🏦 زرین‌پال', callback_data: 'payment_method:zarinpal' }]
+          [
+            { text: '💳 کارت به کارت', callback_data: 'payment_method:card' },
+            { text: '💰 ارز دیجیتال', callback_data: 'payment_method:crypto' }
+          ],
+          [
+            { text: '🏦 زرین‌پال', callback_data: 'payment_method:zarinpal' },
+            { text: '↩️ بازگشت', callback_data: 'back:plans' }
+          ]
         ]
       };
 
       await ctx.reply(
-        `🎯 پلن انتخاب شده: ${plan.name}\n💰 قیمت: ${plan.price.toLocaleString()} تومان\n\n💳 روش پرداخت را انتخاب کنید:`,
-        { reply_markup: keyboard }
+        `<b>🎯 پلن انتخاب شده:</b> ${plan.name}\n<b>💰 قیمت:</b> ${plan.price.toLocaleString()} تومان\n\n<b>💳 روش پرداخت را انتخاب کنید:</b>`,
+        { reply_markup: keyboard, parse_mode: 'HTML' }
       );
     } catch (error) {
       logger.error('Error handling plan selection:', error);
@@ -341,15 +367,17 @@ class TelegramBot {
       });
 
       let paymentMessage = '';
-      let keyboard = {};
+      let keyboard = {} as any;
 
       switch (method) {
-        case 'card':
+        case 'card': {
+          const cardNumber = process.env.BANK_CARD_NUMBER || 'SET_CARD_NUMBER_IN_ENV';
+          const cardHolder = process.env.BANK_CARD_HOLDER || 'SET_CARD_HOLDER_IN_ENV';
           paymentMessage = `
 💳 پرداخت کارت به کارت:
 
-🏦 شماره کارت: 6037-1234-5678-9012
-👤 به نام: احمد احمدی
+🏦 شماره کارت: ${cardNumber}
+👤 به نام: ${cardHolder}
 💰 مبلغ: ${plan.price.toLocaleString()} تومان
 📝 شماره پیگیری: ${payment.id}
 
@@ -361,13 +389,15 @@ class TelegramBot {
             ]]
           };
           break;
+        }
 
-        case 'crypto':
+        case 'crypto': {
+          const usdtAddress = process.env.CRYPTO_USDT_TRC20_ADDRESS || 'SET_USDT_TRC20_ADDRESS_IN_ENV';
           paymentMessage = `
-💰 پرداخت ارز دیجیتال:
+💰 پرداخت ارز دیجیتال (USDT-TRC20):
 
-🔗 آدرس کیف پول: bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
-💰 مبلغ: ${(plan.price / 1000000).toFixed(8)} BTC
+🔗 آدرس کیف پول: ${usdtAddress}
+💰 مبلغ معادل: ${plan.price.toLocaleString()} تومان (معادل USDT را محاسبه و ارسال کنید)
 📝 شماره پیگیری: ${payment.id}
 
 ✅ پس از پرداخت، هش تراکنش را ارسال کنید.
@@ -378,9 +408,10 @@ class TelegramBot {
             ]]
           };
           break;
+        }
 
         case 'zarinpal':
-          const zarinpalUrl = await this.paymentService.createZarinpalPayment(payment.id, plan.price);
+          const zarinpalUrl = await this.paymentService.createZarinPalPayment(payment.id, plan.price);
           paymentMessage = `
 🏦 پرداخت از طریق زرین‌پال:
 
@@ -443,6 +474,60 @@ class TelegramBot {
     } catch (error) {
       logger.error('Error handling payment confirmation:', error);
       await ctx.reply('❌ خطا در تایید پرداخت. لطفاً با پشتیبانی تماس بگیرید.');
+    }
+  }
+
+  private async handlePanelUrlInput(ctx: BotContext, text: string) {
+    try {
+      const url = text.trim();
+      if (!/^https?:\/\//i.test(url)) {
+        return ctx.reply('❌ آدرس معتبر نیست. لطفاً با http/https ارسال کنید.');
+      }
+
+      ctx.session = { ...(ctx.session || { state: 'idle' }), state: 'waiting_for_panel_credentials', panelUrl: url };
+      await ctx.reply('👤 لطفاً نام‌کاربری و رمز عبور پنل را به صورت "username password" ارسال کنید.');
+    } catch (error) {
+      logger.error('Error in handlePanelUrlInput:', error);
+      await ctx.reply('❌ خطا در دریافت آدرس پنل.');
+      ctx.session = { state: 'idle' };
+    }
+  }
+
+  private async handlePanelCredentialsInput(ctx: BotContext, text: string) {
+    try {
+      if (!ctx.session?.panelUrl) {
+        ctx.session = { state: 'idle' };
+        return ctx.reply('❌ ابتدا دستور /add_panel را اجرا کنید.');
+      }
+
+      const parts = text.trim().split(/\s+/);
+      if (parts.length < 2) {
+        return ctx.reply('❌ فرمت نادرست. مثال: admin VeryStrongPassword');
+      }
+
+      const [username, ...rest] = parts;
+      const password = rest.join(' ');
+
+      // Test connection
+      const ok = await this.marzbanService.testPanelConnection(ctx.session.panelUrl, username, password);
+      if (!ok) {
+        return ctx.reply('❌ اتصال به پنل ناموفق بود. لطفاً آدرس/اطلاعات ورود را بررسی کنید.');
+      }
+
+      // Create panel
+      const created = await this.marzbanService.createPanel({
+        name: new URL(ctx.session.panelUrl).host,
+        url: ctx.session.panelUrl,
+        username,
+        password
+      });
+
+      await ctx.reply(`✅ پنل با موفقیت اضافه شد:\n🌐 ${created.name} (${created.url})`);
+      ctx.session = { state: 'idle' };
+    } catch (error) {
+      logger.error('Error in handlePanelCredentialsInput:', error);
+      await ctx.reply('❌ خطا در ذخیره پنل.');
+      ctx.session = { state: 'idle' };
     }
   }
 
@@ -585,9 +670,30 @@ class TelegramBot {
   }
 }
 
-export const initializeBot = async (): Promise<void> => {
+export const initializeBot = async (app?: Express): Promise<Telegraf<BotContext>> => {
   const bot = new TelegramBot();
-  await bot.launch();
+
+  const useWebhook = !!(app && process.env.APP_URL && process.env.TELEGRAM_WEBHOOK_SECRET);
+  if (useWebhook) {
+    const appUrl = process.env.APP_URL as string;
+    const secretToken = process.env.TELEGRAM_WEBHOOK_SECRET as string;
+
+    await bot.getBot().telegram.setWebhook(`${appUrl}/webhook/telegram`, {
+      secret_token: secretToken
+    });
+
+    // Mount webhook handler
+    app!.post('/webhook/telegram', validateTelegramWebhook, (req, res) => {
+      bot.getBot().handleUpdate(req.body, res);
+    });
+
+    logger.info('Telegram bot configured to use webhook', { appUrl });
+  } else {
+    await bot.launch();
+    logger.info('Telegram bot launched in long polling mode');
+  }
+
+  return bot.getBot();
 };
 
 export default TelegramBot;

@@ -70,7 +70,7 @@ module.exports = {
       user: 'ubuntu',
       host: 'your-server-ip',
       ref: 'origin/main',
-      repo: 'https://github.com/yourusername/vpn-bot.git',
+      repo: 'https://github.com/amirebi9156/Rezora-panel.git',
       path: '/home/ubuntu/vpn-bot',
       'pre-deploy-local': '',
       'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production',

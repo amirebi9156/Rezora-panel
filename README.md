@@ -43,7 +43,7 @@
 ### نصب خودکار
 ```bash
 # دانلود اسکریپت نصب
-wget https://raw.githubusercontent.com/yourusername/vpn-bot/main/install.sh
+wget https://raw.githubusercontent.com/amirebi9156/Rezora-panel/main/install.sh
 
 # اجرای اسکریپت
 chmod +x install.sh
@@ -53,8 +53,8 @@ chmod +x install.sh
 ### نصب دستی
 ```bash
 # 1. کلون کردن پروژه
-git clone https://github.com/yourusername/vpn-bot.git
-cd vpn-bot
+git clone https://github.com/amirebi9156/Rezora-panel.git
+cd Rezora-panel
 
 # 2. نصب وابستگی‌ها
 cd backend && npm install
@@ -82,6 +82,7 @@ pm2 start ecosystem.config.js
 NODE_ENV=production
 PORT=3000
 FRONTEND_URL=https://yourdomain.com
+APP_URL=https://yourdomain.com
 
 # Database
 DB_HOST=localhost
@@ -95,10 +96,22 @@ JWT_SECRET=your_jwt_secret
 
 # Telegram Bot
 TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_WEBHOOK_SECRET=change_me
 ADMIN_TELEGRAM_IDS=123456789,987654321
+
+# Support / Branding
+SUPPORT_TELEGRAM=@RezoraHub
+SUPPORT_EMAIL=support@yourdomain.com
 
 # Payment Gateways
 ZARINPAL_MERCHANT_ID=your_merchant_id
+
+# Card to Card (Manual)
+BANK_CARD_NUMBER=6037000000000000
+BANK_CARD_HOLDER=Your Name
+
+# Crypto (Manual)
+CRYPTO_USDT_TRC20_ADDRESS=TVxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ### تنظیم ربات تلگرام
@@ -214,7 +227,7 @@ GET  /api/plans/stats        - آمار پلن‌ها
 
 ### کانال‌های پشتیبانی
 - **GitHub Issues**: برای گزارش باگ و درخواست ویژگی
-- **Telegram**: @support_channel
+- **Telegram**: t.me/RezoraHub
 - **Email**: support@yourdomain.com
 
 ### مستندات

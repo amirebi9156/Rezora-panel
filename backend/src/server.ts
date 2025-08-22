@@ -91,8 +91,7 @@ app.use('/api/users', authMiddleware, userRoutes);
 app.use('/api/bot', authMiddleware, botRoutes);
 app.use('/api/payments', paymentRoutes);
 
-// Webhook endpoint for Telegram
-app.use('/webhook/telegram', botRoutes);
+// Webhook is mounted by initializeBot when using webhook mode
 
 // Error handling middleware
 app.use(errorHandler);
@@ -117,8 +116,8 @@ async function startServer() {
     await initializeDatabase();
     logger.info('Database connected successfully');
     
-    // Initialize Telegram bot
-    await initializeBot();
+    // Initialize Telegram bot (webhook if APP_URL + TELEGRAM_WEBHOOK_SECRET provided, otherwise long polling)
+    await initializeBot(app);
     logger.info('Telegram bot initialized successfully');
     
     server.listen(PORT, () => {
